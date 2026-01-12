@@ -5,7 +5,7 @@ import streamlit as st
 from deap import base, creator, tools, gp
 import operator
 
-# Load your dataset here
+# Load the dataset
 df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
 
 # Set up Streamlit layout
@@ -55,28 +55,28 @@ pset.addTerminal(1)  # Adding terminal values (constants)
 
 # Fitness function to evaluate the programs
 def evaluate(individual):
-    # The individual represents a program (a function)
-    # We'll execute the program to compute the cost and discomfort
-    
     # Convert the individual (tree) to a function
     func = gp.compile(expr=individual, pset=pset)
-    
-    # Evaluate the function's performance on the appliances
-    cost = 0
-    discomfort = 0
-    
+
+    # Initialize cost and discomfort
+    total_cost = 0
+    total_discomfort = 0
+
     for _, row in df.iterrows():
         power = row['Power (kW)']
         duration = row['Duration']
-        # Assume the function calculates cost (e.g., based on power usage)
-        appliance_cost = func(power, duration)  # Using GP-generated program to calculate cost
-        cost += appliance_cost
+        
+        # Calculate the cost for each appliance based on the program
+        appliance_cost = func(power, duration)  # GP-generated program calculates cost
+        total_cost += appliance_cost
 
-        # Discomfort (could be a function of delay)
-        delay = row['Delay']  # Placeholder for delay info
-        discomfort += func(power, delay)  # Using GP-generated program for discomfort
-    
-    return cost, discomfort
+        # Calculate the discomfort (could use other column if necessary)
+        delay = row.get('Delay', 0)  # Handle possible absence of 'Delay'
+        appliance_discomfort = func(power, delay)  # GP-generated program calculates discomfort
+        total_discomfort += appliance_discomfort
+
+    # Return both cost and discomfort (since we want to minimize both)
+    return total_cost, total_discomfort
 
 # Create the population
 toolbox = base.Toolbox()
@@ -130,3 +130,4 @@ if st.button("Start Optimization"):
 
     # Peak Power Constraints
     st.write(f"Peak Power: {max_peak_power} kW")
+
