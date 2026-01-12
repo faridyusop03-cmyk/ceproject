@@ -25,18 +25,15 @@ if df is not None:
     # Clean up column names by stripping extra spaces (if any)
     df.columns = df.columns.str.strip()
 
-    # Inspect columns to identify the correct target column
-    st.write("Columns in the dataset:", df.columns)
+    # Display cleaned-up column names
+    st.write("Cleaned Columns in the dataset:", df.columns)
 
-    # Ensure we are using the correct target column
-    # Assuming 'kw' is the target column (you can replace it with 'cost' or other relevant column names)
-    if 'kw' in df.columns:
-        target_column = 'kw'
+    # Check if the 'kw' column exists (or use another column name if needed)
+    if 'kw' not in df.columns:
+        st.error("The dataset does not contain a column named 'kw'. Please check the dataset.")
     else:
-        st.error("Target column 'kw' not found. Please check the dataset.")
-        target_column = None
+        target_column = 'kw'  # Target column is 'kw'
 
-    if target_column is not None:
         # Feature matrix (tariff, consumption) and target (cost or kw)
         X = df[['tariff', 'consumption']].values  # Tariff and consumption
         y = df[target_column].values  # Target: kw or cost
