@@ -1,106 +1,132 @@
-import streamlit as st
-import random
-import operator
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import random
+import streamlit as st
 from deap import base, creator, tools, gp
-from deap import algorithms
-import os
+import operator
 
-# Load and preprocess dataset
-@st.cache
-def load_data():
-    # Replace this with your file path
-    df = pd.read_csv('/mnt/data/time_of_use_tariff.csv')  # Example CSV file path
-    return df
+# Load your dataset here
+df = pd.read_csv('project_benchmark_data_ce.csv')
 
-df = load_data()
+# Set up Streamlit layout
+st.title("Genetic Programming for Energy Optimization")
 
-# Check if data is loaded
-if df is not None:
-    # Print column names for debugging in Streamlit
-    st.write("Columns in the dataset:", df.columns)
+# Quick Preset Selection (Conservative, Balanced, Aggressive)
+preset = st.selectbox("Select Preset", ["Conservative", "Balanced", "Aggressive"])
 
-    # Clean up column names by stripping extra spaces (if any)
-    df.columns = df.columns.str.strip()
+# ACO Hyperparameters (adjustable sliders)
+st.sidebar.header("GP Hyperparameters")
+pop_size = st.sidebar.slider("Population Size", 10, 100, 20)
+generations = st.sidebar.slider("Generations", 10, 100, 50)
+crossover_prob = st.sidebar.slider("Crossover Probability", 0.0, 1.0, 0.7)
+mutation_prob = st.sidebar.slider("Mutation Probability", 0.0, 1.0, 0.2)
 
-    # Display cleaned-up column names
-    st.write("Cleaned Columns in the dataset:", df.columns)
+# Constraints and Weights
+st.sidebar.header("Constraints & Weights")
+max_peak_power = st.sidebar.slider("Max Peak Power (kW)", 1.0, 10.0, 5.0)
+discomfort_weight = st.sidebar.slider("Discomfort Weight (Cost of 1 hr Delay)", 0.0, 2.0, 0.1)
 
-    # Check if the 'kw' column exists (or use another column name if needed)
-    if 'kw' not in df.columns:
-        st.error("The dataset does not contain a column named 'kw'. Please check the dataset.")
-    else:
-        target_column = 'kw'  # Target column is 'kw'
+# Display devices and their attributes
+st.subheader("Device Information")
+st.write(df)
 
-        # Feature matrix (tariff, consumption) and target (cost or kw)
-        X = df[['tariff', 'consumption']].values  # Tariff and consumption
-        y = df[target_column].values  # Target: kw or cost
+# Baseline (without optimization)
+baseline_cost = df['Power (kW)'].sum() * 0.1  # Example cost per kWh
+baseline_discomfort = 0  # Example placeholder for discomfort calculation
+baseline_peak_power = df['Power (kW)'].max()
 
-        # Define the problem (Minimize cost)
-        def eval_func(individual):
-            func = toolbox.compile(expr=individual)
-            # Apply the GP function to each time slot and compute total cost
-            predictions = [func(tariff, consumption) for tariff, consumption in X]
-            total_cost = np.sum(np.array(predictions))  # Total cost is the sum of costs
-            return total_cost,
+st.write(f"Baseline Cost (No Optimization): RM {baseline_cost:.2f}")
+st.write(f"Baseline Discomfort: {baseline_discomfort} hrs")
+st.write(f"Baseline Peak Power: {baseline_peak_power:.2f} kW")
 
-        # Create a primitive set for genetic programming (modeling cost calculation)
-        pset = gp.PrimitiveSet("MAIN", arity=2)  # Two inputs: tariff, consumption
-        pset.addPrimitive(operator.add, 2)
-        pset.addPrimitive(operator.sub, 2)
-        pset.addPrimitive(operator.mul, 2)
-        pset.addPrimitive(operator.div, 2)
-        pset.addTerminal(1)  # Add constant terminals
+# GP Setup using DEAP library
 
-        # Define the fitness and individual classes
-        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Minimize cost
-        creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin)
+# Define the problem and the fitness function
+creator.create("FitnessMin", base.Fitness, weights=(-1.0, -1.0))  # Minimize cost and discomfort
+creator.create("Individual", list, fitness=creator.FitnessMin)
 
-        # Set up the toolbox
-        toolbox = base.Toolbox()
-        toolbox.register("expr", tools.initPrimitive, pset=pset, min_=2, max_=5)  # Create individuals with 2 to 5 levels
-        toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
-        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        toolbox.register("compile", gp.compile, pset=pset)
-        toolbox.register("mate", gp.cxTwoPoint)  # Two-point crossover
-        toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr, pset=pset)  # Uniform mutation
-        toolbox.register("select", tools.selTournament, tournsize=3)  # Tournament selection
-        toolbox.register("evaluate", eval_func)  # Evaluation function
+# Define the set of possible functions for the GP (program)
+pset = gp.PrimitiveSet("MAIN", 1)  # 1 input: appliance info (power, time, etc.)
+pset.addPrimitive(operator.add, 2)  # + operator
+pset.addPrimitive(operator.sub, 2)  # - operator
+pset.addPrimitive(operator.mul, 2)  # * operator
+pset.addPrimitive(operator.truediv, 2)  # / operator
+pset.addTerminal(1)  # Adding terminal values (constants)
 
-        # Run GP Algorithm to optimize the cost
-        def run_gp():
-            population = toolbox.population(n=300)
-            stats = tools.Statistics(lambda ind: ind.fitness.values)
-            stats.register("avg", np.mean)
-            stats.register("min", np.min)
-            stats.register("max", np.max)
+# Fitness function to evaluate the programs
+def evaluate(individual):
+    # The individual represents a program (a function)
+    # We'll execute the program to compute the cost and discomfort
+    
+    # Convert the individual (tree) to a function
+    func = gp.compile(expr=individual, pset=pset)
+    
+    # Evaluate the function's performance on the appliances
+    cost = 0
+    discomfort = 0
+    
+    for _, row in df.iterrows():
+        power = row['Power (kW)']
+        duration = row['Duration']
+        # Assume the function calculates cost (e.g., based on power usage)
+        appliance_cost = func(power, duration)  # Using GP-generated program to calculate cost
+        cost += appliance_cost
 
-            # Run the evolutionary algorithm
-            algorithms.eaSimple(population, toolbox, cxpb=0.7, mutpb=0.2, ngen=50, stats=stats, halloffame=None)
+        # Discomfort (could be a function of delay)
+        delay = row['Delay']  # Placeholder for delay info
+        discomfort += func(power, delay)  # Using GP-generated program for discomfort
+    
+    return cost, discomfort
 
-            return population, stats
+# Create the population
+toolbox = base.Toolbox()
+toolbox.register("individual", tools.initIterate, creator.Individual, gp.genFull, pset=pset, min_=1, max_=3)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+toolbox.register("mate", tools.cxTwoPoint)  # Crossover
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.0, indpb=0.2)  # Mutation
+toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
+toolbox.register("evaluate", evaluate)
 
-        # Streamlit User Interface
-        st.title("Genetic Programming for Cost Minimization (RM)")
+# GP Execution Button
+if st.button("Start Optimization"):
+    population = toolbox.population(n=pop_size)
 
-        # Button to start the algorithm
-        if st.button("Run Genetic Programming"):
-            st.write("Running GP algorithm to minimize cost...")
-            population, stats = run_gp()
+    # Run the GP algorithm
+    for gen in range(generations):
+        # Evaluate the fitness of the population
+        fitnesses = list(map(toolbox.evaluate, population))
+        for ind, fit in zip(population, fitnesses):
+            ind.fitness.values = fit
 
-            # Get the best individual and display results
-            best_individual = tools.selBest(population, 1)[0]
-            st.write("Best Individual: ", best_individual)
-            st.write("Total Cost (RM) for Best Individual: ", best_individual.fitness.values)
+        # Select the next generation
+        offspring = toolbox.select(population, len(population))
+        offspring = list(map(toolbox.clone, offspring))
 
-            # Display convergence plot
-            gen, avg, min, max = stats.compile(population)
-            plt.plot(gen, avg, label="Average Fitness")
-            plt.plot(gen, min, label="Min Fitness")
-            plt.plot(gen, max, label="Max Fitness")
-            plt.xlabel('Generation')
-            plt.ylabel('Fitness')
-            plt.legend()
-            st.pyplot(plt)
+        # Apply crossover and mutation
+        for child1, child2 in zip(offspring[::2], offspring[1::2]):
+            if random.random() < crossover_prob:
+                toolbox.mate(child1, child2)
+                del child1.fitness.values
+                del child2.fitness.values
+        
+        for mutant in offspring:
+            if random.random() < mutation_prob:
+                toolbox.mutate(mutant)
+                del mutant.fitness.values
+
+        # Re-evaluate the fitness
+        invalid_individuals = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = list(map(toolbox.evaluate, invalid_individuals))
+        for ind, fit in zip(invalid_individuals, fitnesses):
+            ind.fitness.values = fit
+
+        # Replace the old population with the new one
+        population[:] = offspring
+
+    # Get the best solution
+    best_individual = tools.selBest(population, 1)[0]
+    st.write(f"Optimized Total Cost: RM {best_individual.fitness.values[0]:.2f}")
+    st.write(f"Optimized Discomfort: {best_individual.fitness.values[1]:.2f} hrs")
+
+    # Peak Power Constraints
+    st.write(f"Peak Power: {max_peak_power} kW")
