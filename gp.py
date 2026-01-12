@@ -2,39 +2,28 @@ import pandas as pd
 import numpy as np
 import random
 import streamlit as st
-from deap import base, creator, tools, gp
-import operator
 
-# Load your dataset
+# Load dataset (gunakan dataset yang telah dimuat naik)
 df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
 
-# Check the first few rows and the columns in the dataset
-st.write("Dataset Overview:")
-st.write(df.head())
-st.write("Columns in Dataset:")
-st.write(df.columns)
-
 # Set up Streamlit layout
-st.title("Genetic Programming for Energy Optimization")
+st.title("Evolution Strategies for Energy Scheduling")
 
-# Quick Preset Selection (Conservative, Balanced, Aggressive)
-preset = st.selectbox("Select Preset", ["Conservative", "Balanced", "Aggressive"])
+# Display the dataset
+st.subheader("Device Information")
+st.write(df)
 
-# ACO Hyperparameters (adjustable sliders)
-st.sidebar.header("GP Hyperparameters")
+# Hyperparameters (adjustable sliders in Streamlit)
+st.sidebar.header("ES Hyperparameters")
 pop_size = st.sidebar.slider("Population Size", 10, 100, 20)
 generations = st.sidebar.slider("Generations", 10, 100, 50)
-crossover_prob = st.sidebar.slider("Crossover Probability", 0.0, 1.0, 0.7)
-mutation_prob = st.sidebar.slider("Mutation Probability", 0.0, 1.0, 0.2)
+mutation_rate = st.sidebar.slider("Mutation Rate", 0.0, 1.0, 0.2)
+learning_rate = st.sidebar.slider("Learning Rate", 0.0, 1.0, 0.5)
 
 # Constraints and Weights
 st.sidebar.header("Constraints & Weights")
 max_peak_power = st.sidebar.slider("Max Peak Power (kW)", 1.0, 10.0, 5.0)
 discomfort_weight = st.sidebar.slider("Discomfort Weight (Cost of 1 hr Delay)", 0.0, 2.0, 0.1)
-
-# Display devices and their attributes
-st.subheader("Device Information")
-st.write(df)
 
 # Baseline (without optimization)
 baseline_cost = df['Power (kW)'].sum() * 0.1  # Example cost per kWh
@@ -45,73 +34,78 @@ st.write(f"Baseline Cost (No Optimization): RM {baseline_cost:.2f}")
 st.write(f"Baseline Discomfort: {baseline_discomfort} hrs")
 st.write(f"Baseline Peak Power: {baseline_peak_power:.2f} kW")
 
-# GP Setup using DEAP library
-
-# Define the problem and the fitness function
-creator.create("FitnessMin", base.Fitness, weights=(-1.0, -1.0))  # Minimize cost and discomfort
-creator.create("Individual", list, fitness=creator.FitnessMin)
-
-# Define the set of possible functions for the GP (program)
-pset = gp.PrimitiveSet("MAIN", 1)  # 1 input: appliance info (power, time, etc.)
-pset.addPrimitive(operator.add, 2)  # + operator
-pset.addPrimitive(operator.sub, 2)  # - operator
-pset.addPrimitive(operator.mul, 2)  # * operator
-pset.addPrimitive(operator.truediv, 2)  # / operator
-pset.addTerminal(1)  # Adding terminal values (constants)
-
-# Fitness function to evaluate the programs
-def evaluate(individual):
-    # Convert the individual (tree) to a function
-    func = gp.compile(expr=individual, pset=pset)
-
-    # Initialize cost and discomfort
+# Fitness function to evaluate cost and discomfort
+def fitness(schedule):
     total_cost = 0
     total_discomfort = 0
-
+    
     for _, row in df.iterrows():
         power = row['Power (kW)']
         duration = row['Duration']
         
-        # Calculate the cost for each appliance based on the program
-        appliance_cost = func(power, duration)  # GP-generated program calculates cost
-        total_cost += appliance_cost
-
-        # Calculate the discomfort (could use other column if necessary)
-        delay = row.get('Delay', 0)  # Handle possible absence of 'Delay'
-        appliance_discomfort = func(power, delay)  # GP-generated program calculates discomfort
-        total_discomfort += appliance_discomfort
-
-    # Return both cost and discomfort (since we want to minimize both)
+        # Calculate cost based on time of use (assuming a simple cost model for demo)
+        cost = power * 0.1 * duration  # Cost = power * rate * duration (example calculation)
+        total_cost += cost
+        
+        # Discomfort is calculated based on delay from preferred time (simplified)
+        delay = row['Delay']  # Using 'Delay' as a placeholder
+        discomfort = delay * discomfort_weight
+        total_discomfort += discomfort
+        
     return total_cost, total_discomfort
 
-# Create the population
-toolbox = base.Toolbox()
-toolbox.register("individual", tools.initIterate, creator.Individual, gp.genFull, pset=pset, min_=1, max_=3)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-toolbox.register("mate", tools.cxTwoPoint)  # Crossover
-toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.0, indpb=0.2)  # Mutation
-toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
-toolbox.register("evaluate", evaluate)
+# Initialize population: each individual is a set of start times for each device
+def init_population(pop_size, num_devices):
+    population = []
+    for _ in range(pop_size):
+        schedule = np.random.randint(0, 24, num_devices)  # Random start times between 0 and 23
+        population.append(schedule)
+    return population
 
-# GP Execution Button
+# Mutation function to modify the schedule (start times)
+def mutate(schedule, mutation_rate):
+    new_schedule = schedule.copy()
+    for i in range(len(schedule)):
+        if random.random() < mutation_rate:
+            new_schedule[i] = random.randint(0, 24)  # Randomly change the start time
+    return new_schedule
+
+# ES Execution Button
 if st.button("Start Optimization"):
-    population = toolbox.population(n=pop_size)
+    # Initialize population (each individual is a schedule with random start times)
+    num_devices = len(df)
+    population = init_population(pop_size, num_devices)
 
-    # Run the GP algorithm
+    # Evolve the population over several generations
     for gen in range(generations):
-        # Evaluate the fitness of the population
-        fitnesses = list(map(toolbox.evaluate, population))
-        for ind, fit in zip(population, fitnesses):
-            ind.fitness.values = fit
-
-        # Select the next generation
-        offspring = toolbox.select(population, len(population))
-        offspring = list(map(toolbox.clone, offspring))
-
-        # Apply crossover and mutation
-        for child1, child2 in zip(offspring[::2], offspring[1::2]):
-            if random.random() < crossover_prob:
-                toolbox.mate(child1, child2)
-                del child1.fitness.values
-                del child2.fitness.values
+        # Evaluate fitness for the current population
+        fitness_scores = []
+        for individual in population:
+            cost, discomfort = fitness(individual)
+            fitness_scores.append((cost, discomfort))
         
+        # Select the best individuals based on the lowest cost and discomfort
+        sorted_population = [x for _, x in sorted(zip(fitness_scores, population))]
+        sorted_fitness_scores = sorted(fitness_scores)
+        
+        # Select top half of the population (elitism)
+        population = sorted_population[:pop_size // 2]
+        
+        # Create new population using mutated individuals (elitism + mutation)
+        new_population = population.copy()
+        while len(new_population) < pop_size:
+            parent = random.choice(population)
+            child = mutate(parent, mutation_rate)
+            new_population.append(child)
+        
+        # Evaluate the best solution found so far
+        best_solution = new_population[0]
+        best_cost, best_discomfort = fitness(best_solution)
+        
+        st.write(f"Generation {gen + 1} - Best Cost: RM {best_cost:.2f}, Best Discomfort: {best_discomfort:.2f} hrs")
+
+    # Output the best solution found
+    st.write("Optimized Scheduling Result:")
+    st.write(f"Best Schedule: {best_solution}")
+    st.write(f"Best Cost: RM {best_cost:.2f}")
+    st.write(f"Best Discomfort: {best_discomfort:.2f} hrs")
