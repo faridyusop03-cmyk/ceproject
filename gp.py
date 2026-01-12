@@ -5,8 +5,14 @@ import streamlit as st
 from deap import base, creator, tools, gp
 import operator
 
-# Load the dataset
+# Load your dataset
 df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
+
+# Check the first few rows and the columns in the dataset
+st.write("Dataset Overview:")
+st.write(df.head())
+st.write("Columns in Dataset:")
+st.write(df.columns)
 
 # Set up Streamlit layout
 st.title("Genetic Programming for Energy Optimization")
@@ -109,25 +115,3 @@ if st.button("Start Optimization"):
                 del child1.fitness.values
                 del child2.fitness.values
         
-        for mutant in offspring:
-            if random.random() < mutation_prob:
-                toolbox.mutate(mutant)
-                del mutant.fitness.values
-
-        # Re-evaluate the fitness
-        invalid_individuals = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = list(map(toolbox.evaluate, invalid_individuals))
-        for ind, fit in zip(invalid_individuals, fitnesses):
-            ind.fitness.values = fit
-
-        # Replace the old population with the new one
-        population[:] = offspring
-
-    # Get the best solution
-    best_individual = tools.selBest(population, 1)[0]
-    st.write(f"Optimized Total Cost: RM {best_individual.fitness.values[0]:.2f}")
-    st.write(f"Optimized Discomfort: {best_individual.fitness.values[1]:.2f} hrs")
-
-    # Peak Power Constraints
-    st.write(f"Peak Power: {max_peak_power} kW")
-
