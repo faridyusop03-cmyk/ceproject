@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load your dataset
-df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
+df = pd.read_csv('project_benchmark_data_ce.csv')
 
 # Display the first few rows of the dataset
 st.write("Dataset Overview:")
