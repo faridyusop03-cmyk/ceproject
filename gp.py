@@ -4,7 +4,7 @@ import random
 import streamlit as st
 
 # Load dataset (gunakan dataset yang telah dimuat naik)
-df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
+df = pd.read_csv('project_benchmark_data_ce.csv')
 
 # Set up Streamlit layout
 st.title("Evolution Strategies for Energy Scheduling")
