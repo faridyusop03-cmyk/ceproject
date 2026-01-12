@@ -1,5 +1,6 @@
-streamlit
-numpy
+deap
 pandas
+numpy
 matplotlib
-sklearn
+streamlit
+scikit-learn
