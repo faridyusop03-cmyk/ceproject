@@ -12,7 +12,7 @@ import os
 @st.cache
 def load_data():
     # Ensure the file path is correct if using Streamlit's file uploader
-    file_path = '/mnt/data/project_benchmark_data_ce.csv'  # Replace with the correct path if needed
+    file_path = 'project_benchmark_data_ce.csv'  # Replace with the correct path if needed
     if not os.path.exists(file_path):
         st.error(f"File not found: {file_path}")
         return None
