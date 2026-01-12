@@ -6,7 +6,7 @@ from deap import base, creator, tools, gp
 import operator
 
 # Load your dataset here
-df = pd.read_csv('project_benchmark_data_ce.csv')
+df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
 
 # Set up Streamlit layout
 st.title("Genetic Programming for Energy Optimization")
