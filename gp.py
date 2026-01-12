@@ -29,13 +29,14 @@ if df is not None:
     # Clean up column names by stripping extra spaces (if any)
     df.columns = df.columns.str.strip()
 
-    # Ensure the 'target' column exists
-    if 'target' not in df.columns:
-        st.error("The dataset does not contain a column named 'target'. Please check the column name.")
+    # Ensure the 'kw' column exists
+    if 'kw' not in df.columns:
+        st.error("The dataset does not contain a column named 'kw'. Please check the column name.")
     else:
-        # Assume 'target' is the dependent variable and the rest are features
-        X = df.drop('target', axis=1).values
-        y = df['target'].values
+        # Assume 'kw' is the dependent variable and the rest are features
+        target_column = 'kw'  # Target column is now 'kw'
+        X = df.drop(target_column, axis=1).values
+        y = df[target_column].values
 
         # Define the problem (simple regression)
         def eval_func(individual):
@@ -103,4 +104,3 @@ if df is not None:
             plt.ylabel('Fitness')
             plt.legend()
             st.pyplot(plt)
-
