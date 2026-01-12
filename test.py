@@ -1,10 +1,12 @@
 import pandas as pd
 
 # Load your dataset
-df = pd.read_csv('project_benchmark_data_ce.csv')
+df = pd.read_csv('/mnt/data/project_benchmark_data_ce.csv')
 
-# Check the first few rows of the dataset
-print(df.head())
+# Display the first few rows of the dataset
+st.write("Dataset Overview:")
+st.write(df.head())  # Show first 5 rows
 
-# Check the columns of the dataset
-print(df.columns)
+# Display the columns of the dataset
+st.write("Columns in Dataset:")
+st.write(df.columns)  # Show column names
