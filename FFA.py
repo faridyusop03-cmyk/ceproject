@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("⚡ HEMS Optimization using Firefly Algorithm (FFA)")
+st.title("HEMS Optimization using Firefly Algorithm (FFA)")
 st.markdown("""
 **Course:** JIE42903 – Evolutionary Computing  
 **Algorithm:** Firefly Algorithm (FFA)  
@@ -154,7 +154,7 @@ class FireflyHEMS:
 # =========================================================
 # 5. SIDEBAR PARAMETERS
 # =========================================================
-st.sidebar.header("⚙️ Algorithm Parameters")
+st.sidebar.header("Algorithm Parameters")
 
 population_size = st.sidebar.slider("Population Size", 10, 100, 20)
 generations = st.sidebar.slider("Generations", 10, 200, 50)
@@ -178,10 +178,10 @@ for _, row in non_shiftable.iterrows():
         if h < 24:
             base_profile[h] += row['Avg_Power_kW']
 
-st.subheader("📋 Input Dataset")
+st.subheader("Input Dataset")
 st.dataframe(dataset)
 
-if st.button("🚀 Run Optimization", type="primary"):
+if st.button("Run Optimization", type="primary"):
     progress = st.progress(0)
     status = st.empty()
 
