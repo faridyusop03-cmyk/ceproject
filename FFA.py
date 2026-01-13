@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -13,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title(" HEMS Optimization using Firefly Algorithm (FFA)")
+st.title("HEMS Optimization using Firefly Algorithm (FFA)")
 st.markdown("""
 **Algorithm:** Firefly Algorithm (FFA)  
 **Objective:** Minimize electricity cost and user discomfort under power constraints  
@@ -50,8 +49,13 @@ def electricity_rate(hour):
 # 4. FIREFLY ALGORITHM CLASS
 class FireflyHEMS:
     def __init__(self, shiftable_df, base_profile, max_power,
-                 population_size, generations, alpha, beta0, gamma):
+                 population_size, generations, alpha, beta0, gamma, seed=None):
 
+        # Set the random seed if provided
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        
         self.shiftable_df = shiftable_df
         self.base_profile = base_profile
         self.max_power = max_power
@@ -146,7 +150,7 @@ class FireflyHEMS:
 
 # 5. SIDEBAR PARAMETERS
 
-st.sidebar.header(" Algorithm Parameters")
+st.sidebar.header("Algorithm Parameters")
 
 population_size = st.sidebar.slider("Population Size", 10, 100, 20)
 generations = st.sidebar.slider("Generations", 10, 200, 50)
@@ -154,6 +158,7 @@ alpha = st.sidebar.slider("Alpha (Randomness)", 0.0, 1.0, 0.5)
 beta0 = st.sidebar.slider("Beta₀ (Attractiveness)", 0.1, 2.0, 1.0)
 gamma = st.sidebar.slider("Gamma (Absorption)", 0.01, 1.0, 0.1)
 max_power_limit = st.sidebar.number_input("Maximum Power Limit (kW)", value=5.0)
+random_seed = st.sidebar.number_input("Random Seed", value=42, step=1)
 
 # 6. EXECUTION
 
@@ -167,17 +172,18 @@ for _, row in non_shiftable.iterrows():
         if h < 24:
             base_profile[h] += row['Avg_Power_kW']
 
-st.subheader(" Input Dataset")
+st.subheader("Input Dataset")
 st.dataframe(dataset)
 
-if st.button(" Run Optimization", type="primary"):
+if st.button("Run Optimization", type="primary"):
     progress = st.progress(0)
     status = st.empty()
 
     optimizer = FireflyHEMS(
         shiftable, base_profile, max_power_limit,
         population_size, generations,
-        alpha, beta0, gamma
+        alpha, beta0, gamma,
+        seed=random_seed
     )
 
     best, convergence = optimizer.run(progress, status)
@@ -192,7 +198,7 @@ if st.button(" Run Optimization", type="primary"):
 
     # CONVERGENCE GRAPH
 
-    st.subheader(" Convergence Curve (Best Cost vs Generation)")
+    st.subheader("Convergence Curve (Best Cost vs Generation)")
 
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(convergence, linewidth=2)
