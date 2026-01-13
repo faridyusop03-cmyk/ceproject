@@ -1,7 +1,3 @@
-# =========================================================
-# HEMS OPTIMIZATION USING FIREFLY ALGORITHM (FFA)
-# Course : JIE42903 – Evolutionary Computing
-# =========================================================
 
 import streamlit as st
 import pandas as pd
@@ -11,9 +7,7 @@ import random
 import os
 import math
 
-# =========================================================
 # 1. PAGE CONFIGURATION
-# =========================================================
 st.set_page_config(
     page_title="HEMS Optimization – Firefly Algorithm",
     layout="wide"
@@ -25,9 +19,8 @@ st.markdown("""
 **Objective:** Minimize electricity cost and user discomfort under power constraints  
 """)
 
-# =========================================================
 # 2. DATA LOADING
-# =========================================================
+
 @st.cache_data
 def load_dataset():
     filename = "project_benchmark_data_ce.csv"
@@ -44,9 +37,8 @@ if dataset is None:
     st.error("Dataset not found. Please upload `project_benchmark_data_ce.csv`.")
     st.stop()
 
-# =========================================================
 # 3. TARIFF CONFIGURATION (MALAYSIA TOU)
-# =========================================================
+
 RATE_PEAK = 0.570
 RATE_OFF_PEAK = 0.290
 PEAK_START = 14
@@ -55,9 +47,7 @@ PEAK_END = 22
 def electricity_rate(hour):
     return RATE_PEAK if PEAK_START <= hour < PEAK_END else RATE_OFF_PEAK
 
-# =========================================================
 # 4. FIREFLY ALGORITHM CLASS
-# =========================================================
 class FireflyHEMS:
     def __init__(self, shiftable_df, base_profile, max_power,
                  population_size, generations, alpha, beta0, gamma):
@@ -154,9 +144,8 @@ class FireflyHEMS:
         progress.progress(100)
         return best_solution, convergence
 
-# =========================================================
 # 5. SIDEBAR PARAMETERS
-# =========================================================
+
 st.sidebar.header(" Algorithm Parameters")
 
 population_size = st.sidebar.slider("Population Size", 10, 100, 20)
@@ -166,9 +155,8 @@ beta0 = st.sidebar.slider("Beta₀ (Attractiveness)", 0.1, 2.0, 1.0)
 gamma = st.sidebar.slider("Gamma (Absorption)", 0.01, 1.0, 0.1)
 max_power_limit = st.sidebar.number_input("Maximum Power Limit (kW)", value=5.0)
 
-# =========================================================
 # 6. EXECUTION
-# =========================================================
+
 shiftable = dataset[dataset['Is_Shiftable']].reset_index(drop=True)
 non_shiftable = dataset[~dataset['Is_Shiftable']]
 
@@ -202,9 +190,8 @@ if st.button(" Run Optimization", type="primary"):
     c2.metric("Peak Power", f"{best_peak:.2f} kW")
     c3.metric("Total Discomfort", f"{best_disc} hrs")
 
-    # =====================================================
     # CONVERGENCE GRAPH
-    # =====================================================
+
     st.subheader(" Convergence Curve (Best Cost vs Generation)")
 
     fig, ax = plt.subplots(figsize=(8, 4))
