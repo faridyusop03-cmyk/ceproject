@@ -39,9 +39,9 @@ if dataset is None:
 
 # 3. TARIFF CONFIGURATION (MALAYSIA TOU)
 
-RATE_PEAK = 0.570
-RATE_OFF_PEAK = 0.290
-PEAK_START = 14
+RATE_PEAK = 0.4592
+RATE_OFF_PEAK = 0.4183
+PEAK_START = 8
 PEAK_END = 22
 
 def electricity_rate(hour):
