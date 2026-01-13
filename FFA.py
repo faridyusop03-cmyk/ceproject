@@ -20,8 +20,7 @@ st.set_page_config(
 )
 
 st.title("HEMS Optimization using Firefly Algorithm (FFA)")
-st.markdown("""
-**Course:** JIE42903 – Evolutionary Computing  
+st.markdown(""" 
 **Algorithm:** Firefly Algorithm (FFA)  
 **Objective:** Minimize electricity cost and user discomfort under power constraints  
 """)
