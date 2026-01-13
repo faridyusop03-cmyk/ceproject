@@ -19,8 +19,9 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("⚡ HEMS Optimization using Firefly Algorithm (FFA)")
+st.title("HEMS Optimization using Firefly Algorithm (FFA)")
 st.markdown("""
+**Course:** JIE42903 – Evolutionary Computing  
 **Algorithm:** Firefly Algorithm (FFA)  
 **Objective:** Minimize electricity cost and user discomfort under power constraints  
 """)
@@ -45,7 +46,7 @@ if dataset is None:
     st.stop()
 
 # =========================================================
-# 3. MALAYSIA TIME-OF-USE TARIFF
+# 3. TARIFF CONFIGURATION (MALAYSIA TOU)
 # =========================================================
 RATE_PEAK = 0.570
 RATE_OFF_PEAK = 0.290
@@ -106,7 +107,7 @@ class FireflyHEMS:
         )
 
         fitness = cost + 0.1 * discomfort + penalty
-        return fitness, cost, discomfort, peak_power, profile
+        return fitness, cost, discomfort, peak_power
 
     @staticmethod
     def distance(a, b):
@@ -124,14 +125,14 @@ class FireflyHEMS:
             for i in range(self.population_size):
                 for j in range(self.population_size):
                     if evaluated[j][0] < evaluated[i][0]:
-                        r = self.distance(evaluated[i][5], evaluated[j][5])
+                        r = self.distance(evaluated[i][4], evaluated[j][4])
                         beta = self.beta0 * math.exp(-self.gamma * r ** 2)
 
                         new_schedule = []
                         for k in range(len(self.bounds)):
                             move = (
-                                evaluated[i][5][k]
-                                + beta * (evaluated[j][5][k] - evaluated[i][5][k])
+                                evaluated[i][4][k]
+                                + beta * (evaluated[j][4][k] - evaluated[i][4][k])
                                 + self.alpha * random.uniform(-0.5, 0.5)
                             )
                             move = int(round(move))
@@ -157,7 +158,7 @@ class FireflyHEMS:
 # =========================================================
 # 5. SIDEBAR PARAMETERS
 # =========================================================
-st.sidebar.header("Algorithm Parameters")
+st.sidebar.header("⚙️ Algorithm Parameters")
 
 population_size = st.sidebar.slider("Population Size", 10, 100, 20)
 generations = st.sidebar.slider("Generations", 10, 200, 50)
@@ -167,7 +168,7 @@ gamma = st.sidebar.slider("Gamma (Absorption)", 0.01, 1.0, 0.1)
 max_power_limit = st.sidebar.number_input("Maximum Power Limit (kW)", value=5.0)
 
 # =========================================================
-# 6. PREPARE LOAD PROFILE
+# 6. EXECUTION
 # =========================================================
 shiftable = dataset[dataset['Is_Shiftable']].reset_index(drop=True)
 non_shiftable = dataset[~dataset['Is_Shiftable']]
@@ -179,13 +180,10 @@ for _, row in non_shiftable.iterrows():
         if h < 24:
             base_profile[h] += row['Avg_Power_kW']
 
-st.subheader("📋 Input Dataset")
+st.subheader("Input Dataset")
 st.dataframe(dataset)
 
-# =========================================================
-# 7. RUN OPTIMIZATION
-# =========================================================
-if st.button("🚀 Run Optimization", type="primary"):
+if st.button("Run Optimization", type="primary"):
     progress = st.progress(0)
     status = st.empty()
 
@@ -196,7 +194,7 @@ if st.button("🚀 Run Optimization", type="primary"):
     )
 
     best, convergence = optimizer.run(progress, status)
-    _, best_cost, best_disc, best_peak, _, best_schedule = best
+    _, best_cost, best_disc, best_peak, best_schedule = best
 
     st.success("Optimization Completed Successfully")
 
@@ -205,31 +203,15 @@ if st.button("🚀 Run Optimization", type="primary"):
     c2.metric("Peak Power", f"{best_peak:.2f} kW")
     c3.metric("Total Discomfort", f"{best_disc} hrs")
 
-    _, _, _, _, optimized_profile = optimizer.evaluate(best_schedule)
-
-    # =====================================================
-    # POWER PROFILE GRAPH
-    # =====================================================
-    fig, ax = plt.subplots(figsize=(10, 4))
-    hours = np.arange(24)
-    ax.axvspan(PEAK_START, PEAK_END, color='orange', alpha=0.2, label="Peak Period")
-    ax.step(hours, base_profile, '--', label="Original Profile", color='red')
-    ax.step(hours, optimized_profile, label="Optimized Profile", color='green')
-    ax.axhline(max_power_limit, linestyle=':', color='black', label="Power Limit")
-    ax.set_ylabel("Power (kW)")
-    ax.set_xlabel("Hour")
-    ax.legend()
-    st.pyplot(fig)
-
     # =====================================================
     # CONVERGENCE GRAPH
     # =====================================================
-    st.subheader("📉 Convergence Curve")
+    st.subheader("📉 Convergence Curve (Best Cost vs Generation)")
 
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-    ax2.plot(convergence, linewidth=2)
-    ax2.set_xlabel("Generation")
-    ax2.set_ylabel("Best Cost (RM)")
-    ax2.set_title("Firefly Algorithm Convergence")
-    ax2.grid(True)
-    st.pyplot(fig2)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(convergence, linewidth=2)
+    ax.set_xlabel("Generation")
+    ax.set_ylabel("Best Cost (RM)")
+    ax.set_title("Firefly Algorithm Convergence")
+    ax.grid(True)
+    st.pyplot(fig)
