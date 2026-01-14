@@ -158,7 +158,7 @@ alpha = st.sidebar.slider("Alpha (Randomness)", 0.0, 1.0, 0.5)
 beta0 = st.sidebar.slider("Beta₀ (Attractiveness)", 0.1, 2.0, 1.0)
 gamma = st.sidebar.slider("Gamma (Absorption)", 0.01, 1.0, 0.1)
 max_power_limit = st.sidebar.number_input("Maximum Power Limit (kW)", value=5.0)
-random_seed = st.sidebar.number_input("Random Seed", value=42, step=1)
+#random_seed = st.sidebar.number_input("Random Seed", value=42, step=1)
 
 # 6. EXECUTION
 
